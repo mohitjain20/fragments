@@ -1,64 +1,92 @@
-/*
- * Copyright (C) 2015 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.example.android.sunshine;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
-import android.view.MenuItem;
+import android.preference.CheckBoxPreference;
+import android.preference.ListPreference;
+import android.preference.Preference;
+import android.preference.PreferenceScreen;
+
+import kk.PreferenceFragmentCompat;
 
 /**
- * Loads the SettingsFragment and handles the proper behavior of the up button.
+ * The SettingsFragment serves as the display for all of the user's settings. In Sunshine, the
+ * user will be able to change their preference for units of measurement from metric to imperial,
+ * set their preferred weather location, and indicate whether or not they'd like to see
+ * notifications.
+ *
+ * Please note: If you are using our dummy weather services, the location returned will always be
+ * Mountain View, California.
  */
-public class SettingsActivity extends AppCompatActivity {
+// COMPLETED (4) Create SettingsFragment and extend PreferenceFragmentCompat
+public class SettingsFragment extends PreferenceFragmentCompat implements
+        // COMPLETED (10) Implement OnSharedPreferenceChangeListener from SettingsFragment
+        SharedPreferences.OnSharedPreferenceChangeListener {
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        this.setContentView(R.layout.activity_settings);
-        this.getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+    // COMPLETED (8) Create a method called setPreferenceSummary that accepts a Preference and an Object and sets the summary of the preference
+    private void setPreferenceSummary(Preference preference, Object value) {
+        String stringValue = value.toString();
+        String key = preference.getKey();
 
-        // TODO (2) Create an xml resource directory
-        // TODO (3) Add a PreferenceScreen with an EditTextPreference and ListPreference within the newly created xml resource directory
-
-        // TODO (4) Create SettingsFragment and extend PreferenceFragmentCompat
-
-        // Do steps 5 - 11 within SettingsFragment
-        // TODO (10) Implement OnSharedPreferenceChangeListener from SettingsFragment
-
-        // TODO (8) Create a method called setPreferenceSummary that accepts a Preference and an Object and sets the summary of the preference
-
-        // TODO (5) Override onCreatePreferences and add the preference xml file using addPreferencesFromResource
-
-        // Do step 9 within onCreatePreference
-        // TODO (9) Set the preference summary on each preference that isn't a CheckBoxPreference
-
-        // TODO (13) Unregister SettingsFragment (this) as a SharedPreferenceChangedListener in onStop
-
-        // TODO (12) Register SettingsFragment (this) as a SharedPreferenceChangedListener in onStart
-
-        // TODO (11) Override onSharedPreferenceChanged to update non CheckBoxPreferences when they are changed
+        if (preference instanceof ListPreference) {
+            /* For list preferences, look up the correct display value in */
+            /* the preference's 'entries' list (since they have separate labels/values). */
+            ListPreference listPreference = (ListPreference) preference;
+            int prefIndex = listPreference.findIndexOfValue(stringValue);
+            if (prefIndex >= 0) {
+                preference.setSummary(listPreference.getEntries()[prefIndex]);
+            }
+        } else {
+            // For other preferences, set the summary to the value's simple string representation.
+            preference.setSummary(stringValue);
+        }
     }
 
+    // COMPLETED (5) Override onCreatePreferences and add the preference xml file using addPreferencesFromResource
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        if (id == android.R.id.home) {
-            onBackPressed();
-        }
+    public void onCreatePreferences(Bundle bundle, String s) {
+        /* Add 'general' preferences, defined in the XML file */
+        addPreferencesFromResource(R.xml.pref_general);
 
-        return super.onOptionsItemSelected(item);
+        // COMPLETED (9) Set the preference summary on each preference that isn't a CheckBoxPreference
+        SharedPreferences sharedPreferences = getPreferenceScreen().getSharedPreferences();
+        PreferenceScreen prefScreen = getPreferenceScreen();
+        int count = prefScreen.getPreferenceCount();
+        for (int i = 0; i < count; i++) {
+            Preference p = prefScreen.getPreference(i);
+            if (!(p instanceof CheckBoxPreference)) {
+                String value = sharedPreferences.getString(p.getKey(), "");
+                setPreferenceSummary(p, value);
+            }
+        }
+    }
+
+    // COMPLETED (13) Unregister SettingsFragment (this) as a SharedPreferenceChangedListener in onStop
+    @Override
+    public void onStop() {
+        super.onStop();
+        /* Unregister the preference change listener */
+        getPreferenceScreen().getSharedPreferences()
+                .unregisterOnSharedPreferenceChangeListener(this);
+    }
+
+    // COMPLETED (12) Register SettingsFragment (this) as a SharedPreferenceChangedListener in onStart
+    @Override
+    public void onStart() {
+        super.onStart();
+        /* Register the preference change listener */
+        getPreferenceScreen().getSharedPreferences()
+                .registerOnSharedPreferenceChangeListener(this);
+    }
+
+    // COMPLETED (11) Override onSharedPreferenceChanged to update non CheckBoxPreferences when they are changed
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        Preference preference = findPreference(key);
+        if (null != preference) {
+            if (!(preference instanceof CheckBoxPreference)) {
+                setPreferenceSummary(preference, sharedPreferences.getString(key, ""));
+            }
+        }
     }
 }
